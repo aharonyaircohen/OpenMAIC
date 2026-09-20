@@ -81,9 +81,11 @@ const LOAD_UNAVAILABLE_ERROR = 'load-unavailable';
 export function ClassroomSurface({
   classroomId,
   variant = 'page',
+  learnerMode = false,
 }: {
   readonly classroomId: string;
   readonly variant?: 'page' | 'pane';
+  readonly learnerMode?: boolean;
 }) {
   const { loadFromStorage } = useStageStore();
   const loadedClassroomId = useStageStore((s) => s.stage?.id ?? null);
@@ -107,7 +109,8 @@ export function ClassroomSurface({
    * the outline-retry affordance alike, so what is offered and what is allowed
    * cannot diverge.
    */
-  const mayGenerate = useMayGenerateForStage(classroomId);
+  const ownerMayGenerate = useMayGenerateForStage(classroomId);
+  const mayGenerate = !learnerMode && ownerMayGenerate;
 
   const generationStartedRef = useRef(false);
   const activeClassroomIdRef = useRef<string | null>(null);
@@ -219,8 +222,9 @@ export function ClassroomSurface({
           // hosted pane owns that decision at its workspace boundary.
           if (variant === 'page') {
             if (result.outcome === 'found') {
-              noteStageOwnership(classroomId, true, { isOwner: result.meta.isOwner });
-              useStageStore.getState().setViewerAccess({ isOwner: result.meta.isOwner });
+              const isOwner = !learnerMode && result.meta.isOwner;
+              noteStageOwnership(classroomId, true, { isOwner });
+              useStageStore.getState().setViewerAccess({ isOwner });
             } else if (result.outcome === 'unavailable') {
               noteStageOwnership(classroomId, false, null);
             } else {
@@ -238,7 +242,7 @@ export function ClassroomSurface({
 
       void retryWhileOwnershipUnresolved(askOwnership, { isCurrent });
     },
-    [classroomId, variant],
+    [classroomId, learnerMode, variant],
   );
 
   const retryClassroom = useCallback(() => {
@@ -531,7 +535,7 @@ export function ClassroomSurface({
                 <p className="text-lg font-medium">{t('classroom.notFound')}</p>
                 <p className="text-sm text-muted-foreground">{t('classroom.notFoundDesc')}</p>
                 <Link
-                  href="/"
+                  href={learnerMode ? '/learn' : '/'}
                   className="mt-2 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
                 >
                   {t('classroom.backToHome')}
@@ -570,6 +574,7 @@ export function ClassroomSurface({
           ) : (
             <Stage
               classroomId={classroomId}
+              learnerMode={learnerMode}
               onRetryOutline={mayGenerate ? retrySingleOutline : undefined}
             />
           )}

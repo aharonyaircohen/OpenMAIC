@@ -27,6 +27,8 @@ import {
   X,
   Presentation,
   Loader2,
+  Globe2,
+  LockKeyhole,
 } from 'lucide-react';
 import { useI18n } from '@/lib/hooks/use-i18n';
 import { LanguageSwitcher } from '@/components/language-switcher';
@@ -349,6 +351,9 @@ function HomePage() {
       revokeThumbnailSlideMediaUrls(thumbnailsRef.current);
       thumbnailsRef.current = {};
     };
+    // Initial load only; these helpers intentionally use the first render's
+    // folder state and are refreshed explicitly after later mutations.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleDelete = (id: string, e: React.MouseEvent) => {
@@ -1667,6 +1672,8 @@ function ClassroomCard({
   const [thumbWidth, setThumbWidth] = useState(0);
   const [editing, setEditing] = useState(false);
   const [nameDraft, setNameDraft] = useState('');
+  const [published, setPublished] = useState(false);
+  const [publishLoading, setPublishLoading] = useState(true);
   const nameInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -1682,6 +1689,42 @@ function ClassroomCard({
   useEffect(() => {
     if (editing) nameInputRef.current?.focus();
   }, [editing]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/stages/${encodeURIComponent(classroom.id)}/status`, {
+      credentials: 'include',
+    })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((body) => {
+        if (!cancelled) setPublished(body?.isPublic === true);
+      })
+      .finally(() => {
+        if (!cancelled) setPublishLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [classroom.id]);
+
+  const togglePublished = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (publishLoading) return;
+    setPublishLoading(true);
+    try {
+      const response = await fetch(
+        `/api/stages/${encodeURIComponent(classroom.id)}/${published ? 'unpublish' : 'publish'}`,
+        { method: 'POST', credentials: 'include' },
+      );
+      if (!response.ok) throw new Error('Publish update failed');
+      setPublished((value) => !value);
+      toast.success(published ? 'Course removed from the student portal' : 'Course published');
+    } catch {
+      toast.error('The course publishing status could not be changed');
+    } finally {
+      setPublishLoading(false);
+    }
+  };
 
   const isTaskEngineMode = classroom.taskEngineMode === true;
   const showModeBadge = classroom.interactiveMode || isTaskEngineMode;
@@ -1787,6 +1830,28 @@ function ClassroomCard({
                 }}
               >
                 <Trash2 className="size-3.5" />
+              </Button>
+              <Button
+                size="icon"
+                variant="ghost"
+                className={cn(
+                  'absolute top-2 right-20 size-7 opacity-0 group-hover:opacity-100 transition-opacity text-white hover:text-white backdrop-blur-sm rounded-full',
+                  published
+                    ? 'bg-emerald-500/80 hover:bg-emerald-500'
+                    : 'bg-black/30 hover:bg-black/50',
+                )}
+                onClick={togglePublished}
+                disabled={publishLoading}
+                aria-label={published ? 'Unpublish course' : 'Publish course'}
+                title={published ? 'Published to students' : 'Publish to students'}
+              >
+                {publishLoading ? (
+                  <Loader2 className="size-3.5 animate-spin" />
+                ) : published ? (
+                  <Globe2 className="size-3.5" />
+                ) : (
+                  <LockKeyhole className="size-3.5" />
+                )}
               </Button>
               <Button
                 size="icon"

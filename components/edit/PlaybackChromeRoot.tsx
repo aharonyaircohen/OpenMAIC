@@ -95,6 +95,7 @@ export interface PlaybackChromeRootHandle {
 }
 
 interface PlaybackChromeRootProps {
+  readonly learnerMode?: boolean;
   readonly onRetryOutline?: (outlineId: string) => Promise<void>;
   /** Whether the Pro Switch in Header should be enabled. */
   readonly canEnterProMode?: boolean;
@@ -120,6 +121,7 @@ export const PlaybackChromeRoot = forwardRef<PlaybackChromeRootHandle, PlaybackC
   function PlaybackChromeRoot(
     {
       onRetryOutline,
+      learnerMode = false,
       canEnterProMode,
       onEnterProMode,
       proModeActive,
@@ -839,6 +841,13 @@ export const PlaybackChromeRoot = forwardRef<PlaybackChromeRootHandle, PlaybackC
             }
           },
           onProactiveShow: (trigger) => {
+            if (learnerMode) {
+              // Learners get a reliable linear lesson. Live AI discussions use
+              // administrator-managed model access and are intentionally kept
+              // out of the learner surface for now.
+              queueMicrotask(() => engineRef.current?.skipDiscussion());
+              return;
+            }
             if (!trigger.agentId) {
               // Mutate in-place so engine.currentTrigger also gets the agentId
               // (confirmDiscussion reads agentId from the same object reference)
@@ -1582,7 +1591,7 @@ export const PlaybackChromeRoot = forwardRef<PlaybackChromeRootHandle, PlaybackC
     // when entering Pro mode.
     const sceneViewerHeight = (() => {
       const headerHeight = isPresenting || hideHeader ? 0 : 80;
-      const roundtableHeight = mode === 'playback' && !isPresenting ? 192 : 0;
+      const roundtableHeight = mode === 'playback' && !isPresenting ? (learnerMode ? 112 : 192) : 0;
       return `calc(100% - ${headerHeight + roundtableHeight}px)`;
     })();
 
@@ -1621,6 +1630,8 @@ export const PlaybackChromeRoot = forwardRef<PlaybackChromeRootHandle, PlaybackC
               hideBackControl={hideHeaderBackControl}
               hideGlobalControls={hideHeaderGlobalControls}
               hideCourseActions={hideHeaderCourseActions}
+              learnerMode={learnerMode}
+              backHref={learnerMode ? '/learn' : undefined}
             />
           )}
 
@@ -1651,9 +1662,11 @@ export const PlaybackChromeRoot = forwardRef<PlaybackChromeRootHandle, PlaybackC
               softCloseDeadline={softCloseDeadline}
               whiteboardOpen={whiteboardOpen}
               sidebarCollapsed={sidebarCollapsed}
-              chatCollapsed={chatAreaCollapsed}
+              chatCollapsed={learnerMode || chatAreaCollapsed}
               onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)}
-              onToggleChat={() => setChatAreaCollapsed(!chatAreaCollapsed)}
+              onToggleChat={
+                learnerMode ? undefined : () => setChatAreaCollapsed(!chatAreaCollapsed)
+              }
               onPrevSlide={handlePreviousScene}
               onNextSlide={handleNextScene}
               onPlayPause={handlePlayPause}
@@ -1688,7 +1701,24 @@ export const PlaybackChromeRoot = forwardRef<PlaybackChromeRootHandle, PlaybackC
           </div>
 
           {/* Roundtable Area */}
-          {mode === 'playback' && (
+          {mode === 'playback' && learnerMode && (
+            <div
+              className={cn(
+                'border-t border-slate-200/80 bg-white/95 px-5 py-4 text-center dark:border-slate-800 dark:bg-slate-950/95',
+                isPresenting &&
+                  'absolute inset-x-4 bottom-4 z-20 rounded-2xl border bg-white/90 shadow-2xl backdrop-blur dark:bg-slate-950/90',
+              )}
+            >
+              <p
+                dir="auto"
+                className="mx-auto line-clamp-3 max-w-4xl text-sm leading-6 text-slate-700 dark:text-slate-200 sm:text-base"
+              >
+                {liveSpeech || lectureSpeech || firstSpeechText || stage?.name}
+              </p>
+            </div>
+          )}
+
+          {mode === 'playback' && !learnerMode && (
             <div
               className={cn(
                 'transition-opacity duration-300',
@@ -1870,7 +1900,7 @@ export const PlaybackChromeRoot = forwardRef<PlaybackChromeRootHandle, PlaybackC
         {/* Chat Area — playback / autonomous always renders it here; Pro
           (edit) mode unmounts this whole PlaybackChromeRoot, so the
           edit branch has no chat. */}
-        <div className="flex shrink-0">
+        <div className={cn('flex shrink-0', learnerMode && 'hidden')}>
           <ChatArea
             ref={chatAreaRef}
             width={chatAreaWidth}

@@ -1,12 +1,14 @@
 import { EventEmitter } from 'events';
 import path from 'path';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { NextRequest } from 'next/server';
 
 const mocks = vi.hoisted(() => ({
   realpath: vi.fn(),
   stat: vi.fn(),
   createReadStream: vi.fn(),
+  getApplicationRole: vi.fn(),
+  resolveStageAccess: vi.fn(),
 }));
 
 vi.mock('fs', () => ({
@@ -21,6 +23,14 @@ vi.mock('@/lib/logger', () => ({
     error: vi.fn(),
     debug: vi.fn(),
   }),
+}));
+
+vi.mock('@/lib/server/role-access', () => ({
+  getApplicationRole: mocks.getApplicationRole,
+}));
+
+vi.mock('@/lib/server/stage-access', () => ({
+  resolveStageAccess: mocks.resolveStageAccess,
 }));
 
 import { GET } from '@/app/api/classroom-media/[classroomId]/[...path]/route';
@@ -56,6 +66,30 @@ describe('GET /api/classroom-media range support', () => {
     mocks.createReadStream.mockImplementation((_file: string, options?: { start?: number }) =>
       fakeReadStream(['x'.repeat(options?.start === undefined ? FILE_SIZE : 10)]),
     );
+    mocks.getApplicationRole.mockResolvedValue('admin');
+    mocks.resolveStageAccess.mockResolvedValue({
+      isPublic: true,
+      generationComplete: true,
+    });
+  });
+
+  afterEach(() => {
+    delete process.env.ACCESS_CODE;
+  });
+
+  it('does not expose private course media to a learner', async () => {
+    process.env.ACCESS_CODE = 'admin-code-that-is-long-enough';
+    mocks.getApplicationRole.mockResolvedValue('learner');
+    mocks.resolveStageAccess.mockResolvedValue({
+      isPublic: false,
+      generationComplete: true,
+    });
+
+    const res = await get();
+
+    expect(res.status).toBe(404);
+    expect(mocks.realpath).not.toHaveBeenCalled();
+    expect(mocks.createReadStream).not.toHaveBeenCalled();
   });
 
   it('serves the full body with 200 and advertises range support when no Range is sent', async () => {
