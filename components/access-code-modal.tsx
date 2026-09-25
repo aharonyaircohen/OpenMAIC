@@ -8,9 +8,20 @@ import { ArrowRight, ShieldCheck, LoaderCircle } from 'lucide-react';
 interface AccessCodeModalProps {
   open: boolean;
   onSuccess: () => void;
+  endpoint?: string;
+  title?: string;
+  subtitle?: string;
+  errorMessage?: string;
 }
 
-export function AccessCodeModal({ open, onSuccess }: AccessCodeModalProps) {
+export function AccessCodeModal({
+  open,
+  onSuccess,
+  endpoint = '/api/access-code/verify',
+  title,
+  subtitle = 'OpenMAIC',
+  errorMessage,
+}: AccessCodeModalProps) {
   const { t } = useI18n();
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
@@ -31,7 +42,7 @@ export function AccessCodeModal({ open, onSuccess }: AccessCodeModalProps) {
     setLoading(true);
 
     try {
-      const res = await fetch('/api/access-code/verify', {
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code }),
@@ -41,12 +52,12 @@ export function AccessCodeModal({ open, onSuccess }: AccessCodeModalProps) {
         setSuccess(true);
         setTimeout(onSuccess, 600);
       } else {
-        setError(t('accessCode.error'));
+        setError(errorMessage ?? t('accessCode.error'));
         setCode('');
         inputRef.current?.focus();
       }
     } catch {
-      setError(t('accessCode.error'));
+      setError(errorMessage ?? t('accessCode.error'));
     } finally {
       setLoading(false);
     }
@@ -109,7 +120,7 @@ export function AccessCodeModal({ open, onSuccess }: AccessCodeModalProps) {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2, duration: 0.4 }}
               >
-                {t('accessCode.title')}
+                {title ?? t('accessCode.title')}
               </motion.h1>
 
               <motion.p
@@ -118,7 +129,7 @@ export function AccessCodeModal({ open, onSuccess }: AccessCodeModalProps) {
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.25, duration: 0.4 }}
               >
-                OpenMAIC
+                {subtitle}
               </motion.p>
 
               {/* Form */}

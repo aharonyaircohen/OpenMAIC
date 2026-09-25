@@ -26,6 +26,7 @@ type ClassroomSurfaceVariant = 'page' | 'pane';
 interface ClassroomSessionOptions {
   readonly classroomId: string;
   readonly variant: ClassroomSurfaceVariant;
+  readonly learnerMode?: boolean;
   readonly stopGeneration: () => void;
 }
 
@@ -41,9 +42,11 @@ interface ClassroomSession {
 export function useClassroomSession({
   classroomId,
   variant,
+  learnerMode = false,
   stopGeneration,
 }: ClassroomSessionOptions): ClassroomSession {
-  const mayGenerate = useMayGenerateForStage(classroomId);
+  const ownerMayGenerate = useMayGenerateForStage(classroomId);
+  const mayGenerate = !learnerMode && ownerMayGenerate;
 
   const refreshOwnership = useCallback(
     (isCurrent: () => boolean) => {
@@ -60,8 +63,9 @@ export function useClassroomSession({
           // hosted pane owns that decision at its workspace boundary.
           if (variant === 'page') {
             if (result.outcome === 'found') {
-              noteStageOwnership(classroomId, true, { isOwner: result.meta.isOwner });
-              useStageStore.getState().setViewerAccess({ isOwner: result.meta.isOwner });
+              const isOwner = !learnerMode && result.meta.isOwner;
+              noteStageOwnership(classroomId, true, { isOwner });
+              useStageStore.getState().setViewerAccess({ isOwner });
             } else if (result.outcome === 'unavailable') {
               noteStageOwnership(classroomId, false, null);
             } else {
@@ -79,7 +83,7 @@ export function useClassroomSession({
 
       void retryWhileOwnershipUnresolved(askOwnership, { isCurrent });
     },
-    [classroomId, variant],
+    [classroomId, learnerMode, variant],
   );
 
   useEffect(() => {

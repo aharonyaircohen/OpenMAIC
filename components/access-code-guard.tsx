@@ -3,8 +3,10 @@
 import { useEffect, useState, ReactNode } from 'react';
 import { AccessCodeModal } from '@/components/access-code-modal';
 import { useSettingsStore } from '@/lib/store/settings';
+import { usePathname } from 'next/navigation';
 
 export function AccessCodeGuard({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
   const [status, setStatus] = useState<{
     enabled: boolean;
     authenticated: boolean;
@@ -35,7 +37,8 @@ export function AccessCodeGuard({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const needsAuth = !status.loading && status.enabled && !status.authenticated;
+  const learnerRoute = pathname === '/learn' || pathname.startsWith('/learn/');
+  const needsAuth = !learnerRoute && !status.loading && status.enabled && !status.authenticated;
 
   return (
     <>

@@ -47,6 +47,8 @@ interface HeaderControlsProps {
   readonly onToggleEditMode?: () => void;
   readonly showGlobalControls?: boolean;
   readonly showCourseActions?: boolean;
+  /** Learners may change language/theme, but never provider settings, editing or exports. */
+  readonly learnerMode?: boolean;
   /**
    * `default` — the chunky h-9 pill used in the playback Stage Header.
    * `compact` — slightly tighter padding for embedding in CommandBar's
@@ -76,6 +78,7 @@ export function HeaderControls({
   onToggleEditMode,
   showGlobalControls = true,
   showCourseActions = true,
+  learnerMode = false,
   variant = 'default',
 }: HeaderControlsProps) {
   const { t } = useI18n();
@@ -200,14 +203,16 @@ export function HeaderControls({
           </DropdownMenuContent>
         </DropdownMenu>
 
-        {/* Settings */}
-        <button
-          onClick={() => setSettingsOpen(true)}
-          className="p-2 rounded-full text-gray-400 dark:text-gray-500 hover:bg-white dark:hover:bg-gray-700 hover:text-gray-800 dark:hover:text-gray-200 hover:shadow-sm transition-all group"
-          aria-label={t('settings.title')}
-        >
-          <Settings className="w-4 h-4 group-hover:rotate-90 transition-transform duration-500" />
-        </button>
+        {/* Provider/model settings are an administrator surface. */}
+        {!learnerMode && (
+          <button
+            onClick={() => setSettingsOpen(true)}
+            className="p-2 rounded-full text-gray-400 dark:text-gray-500 hover:bg-white dark:hover:bg-gray-700 hover:text-gray-800 dark:hover:text-gray-200 hover:shadow-sm transition-all group"
+            aria-label={t('settings.title')}
+          >
+            <Settings className="w-4 h-4 group-hover:rotate-90 transition-transform duration-500" />
+          </button>
+        )}
       </div>
 
       {/* Pro Switch — toggle property: on/off both clickable, not a
@@ -216,7 +221,7 @@ export function HeaderControls({
           host bar on the mode swap (no cross-bar layoutId morph: the
           playback Header and edit CommandBar have different left-side
           widths, so morphing made the pill visibly drift). */}
-      {onToggleEditMode && (
+      {!learnerMode && onToggleEditMode && (
         <label
           className={cn(
             'shrink-0 inline-flex items-center gap-2.5 rounded-full border shadow-sm transition-colors duration-200',
@@ -264,131 +269,133 @@ export function HeaderControls({
           Not a settings function so it does not belong inside the
           settings pill; kept as a separate sibling sitting between the
           Pro Switch and the right edge of the chrome. */}
-      <DropdownMenu modal={false} open={exportMenuOpen} onOpenChange={setExportMenuOpen}>
-        <DropdownMenuTrigger asChild>
-          <button
-            disabled={!canExport || isExporting || isExportingZip || isExportingScript}
-            title={
-              isExporting || isExportingZip || isExportingScript
-                ? t('export.exporting')
-                : exportLabel
-            }
-            className={cn(
-              'shrink-0 p-2 rounded-full transition-all',
-              canExport && !isExporting && !isExportingZip && !isExportingScript
-                ? 'text-gray-400 dark:text-gray-500 hover:bg-white dark:hover:bg-gray-700 hover:text-gray-800 dark:hover:text-gray-200 hover:shadow-sm'
-                : 'text-gray-300 dark:text-gray-600 cursor-not-allowed opacity-50',
-            )}
-            aria-label={exportLabel}
-          >
-            {isExporting || isExportingZip || isExportingScript ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : videoRendering ? (
-              // Persistent ring: video render runs in the background; keep it
-              // visible on the button whether or not the menu is open.
-              <CircularProgress value={videoRenderPercent} size={20} className="text-primary" />
-            ) : (
-              <Download className="w-4 h-4" />
-            )}
-          </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" sideOffset={8} className="min-w-[240px]">
-          <DropdownMenuItem
-            disabled={!canExport}
-            onSelect={exportPPTX}
-            className="cursor-pointer gap-2.5"
-            title={canExport ? undefined : t('export.mediaPending')}
-          >
-            <FileDown className="w-4 h-4 text-gray-400 shrink-0" />
-            <span>{t('export.pptx')}</span>
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            disabled={!canExport}
-            onSelect={exportResourcePack}
-            className="cursor-pointer gap-2.5"
-            title={canExport ? undefined : t('export.mediaPending')}
-          >
-            <Package className="w-4 h-4 text-gray-400 shrink-0" />
-            <div>
-              <div>{t('export.resourcePack')}</div>
-              <div className="text-[11px] text-gray-400 dark:text-gray-500">
-                {t('export.resourcePackDesc')}
-              </div>
-            </div>
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            disabled={!canExport || isExportingZip}
-            onSelect={exportClassroomZip}
-            className="cursor-pointer gap-2.5"
-            title={canExport ? undefined : t('export.mediaPending')}
-          >
-            <Archive className="w-4 h-4 text-gray-400 shrink-0" />
-            <div>
-              <div>{t('export.classroomZip')}</div>
-              <div className="text-[11px] text-gray-400 dark:text-gray-500">
-                {t('export.classroomZipDesc')}
-              </div>
-            </div>
-          </DropdownMenuItem>
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger
-              disabled={!canExport}
-              title={canExport ? undefined : t('export.mediaPending')}
-              className="cursor-pointer gap-2.5"
+      {!learnerMode && showCourseActions && (
+        <DropdownMenu modal={false} open={exportMenuOpen} onOpenChange={setExportMenuOpen}>
+          <DropdownMenuTrigger asChild>
+            <button
+              disabled={!canExport || isExporting || isExportingZip || isExportingScript}
+              title={
+                isExporting || isExportingZip || isExportingScript
+                  ? t('export.exporting')
+                  : exportLabel
+              }
+              className={cn(
+                'shrink-0 p-2 rounded-full transition-all',
+                canExport && !isExporting && !isExportingZip && !isExportingScript
+                  ? 'text-gray-400 dark:text-gray-500 hover:bg-white dark:hover:bg-gray-700 hover:text-gray-800 dark:hover:text-gray-200 hover:shadow-sm'
+                  : 'text-gray-300 dark:text-gray-600 cursor-not-allowed opacity-50',
+              )}
+              aria-label={exportLabel}
             >
-              <NotebookText className="w-4 h-4 text-gray-400 shrink-0" aria-hidden="true" />
-              <span>{t('export.script')}</span>
-            </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent className="min-w-[240px]">
-              <DropdownMenuItem
-                disabled={!canExport || isExportingScript}
-                onSelect={exportScriptMd}
-                className="cursor-pointer gap-2.5"
-              >
-                <NotebookText className="w-4 h-4 text-gray-400 shrink-0" aria-hidden="true" />
-                <div>
-                  <div>{t('export.scriptMd')}</div>
-                  <div className="text-[11px] text-gray-400 dark:text-gray-500">
-                    {t('export.scriptMdDesc')}
-                  </div>
-                </div>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                disabled={!canExport || isExportingScript}
-                onSelect={exportScriptDocx}
-                className="cursor-pointer gap-2.5"
-              >
-                <NotebookText
-                  className="w-4 h-4 text-gray-400 dark:text-gray-500"
-                  aria-hidden="true"
-                />
-                <div>
-                  <div>{t('export.scriptDocx')}</div>
-                  <div className="text-[11px] text-gray-400 dark:text-gray-500">
-                    {t('export.scriptDocxDesc')}
-                  </div>
-                </div>
-              </DropdownMenuItem>
-            </DropdownMenuSubContent>
-          </DropdownMenuSub>
-          {videoExportEnabled && (
+              {isExporting || isExportingZip || isExportingScript ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : videoRendering ? (
+                // Persistent ring: video render runs in the background; keep it
+                // visible on the button whether or not the menu is open.
+                <CircularProgress value={videoRenderPercent} size={20} className="text-primary" />
+              ) : (
+                <Download className="w-4 h-4" />
+              )}
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" sideOffset={8} className="min-w-[240px]">
             <DropdownMenuItem
               disabled={!canExport}
-              onSelect={() => setVideoDialogOpen(true)}
-              className="cursor-pointer gap-2.5 border-t border-gray-200 dark:border-gray-700"
+              onSelect={exportPPTX}
+              className="cursor-pointer gap-2.5"
               title={canExport ? undefined : t('export.mediaPending')}
             >
-              <Film className="w-4 h-4 text-gray-400 shrink-0" />
+              <FileDown className="w-4 h-4 text-gray-400 shrink-0" />
+              <span>{t('export.pptx')}</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              disabled={!canExport}
+              onSelect={exportResourcePack}
+              className="cursor-pointer gap-2.5"
+              title={canExport ? undefined : t('export.mediaPending')}
+            >
+              <Package className="w-4 h-4 text-gray-400 shrink-0" />
               <div>
-                <div>{t('export.video')}</div>
+                <div>{t('export.resourcePack')}</div>
                 <div className="text-[11px] text-gray-400 dark:text-gray-500">
-                  {t('export.videoDesc')}
+                  {t('export.resourcePackDesc')}
                 </div>
               </div>
             </DropdownMenuItem>
-          )}
-        </DropdownMenuContent>
-      </DropdownMenu>
+            <DropdownMenuItem
+              disabled={!canExport || isExportingZip}
+              onSelect={exportClassroomZip}
+              className="cursor-pointer gap-2.5"
+              title={canExport ? undefined : t('export.mediaPending')}
+            >
+              <Archive className="w-4 h-4 text-gray-400 shrink-0" />
+              <div>
+                <div>{t('export.classroomZip')}</div>
+                <div className="text-[11px] text-gray-400 dark:text-gray-500">
+                  {t('export.classroomZipDesc')}
+                </div>
+              </div>
+            </DropdownMenuItem>
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger
+                disabled={!canExport}
+                title={canExport ? undefined : t('export.mediaPending')}
+                className="cursor-pointer gap-2.5"
+              >
+                <NotebookText className="w-4 h-4 text-gray-400 shrink-0" aria-hidden="true" />
+                <span>{t('export.script')}</span>
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent className="min-w-[240px]">
+                <DropdownMenuItem
+                  disabled={!canExport || isExportingScript}
+                  onSelect={exportScriptMd}
+                  className="cursor-pointer gap-2.5"
+                >
+                  <NotebookText className="w-4 h-4 text-gray-400 shrink-0" aria-hidden="true" />
+                  <div>
+                    <div>{t('export.scriptMd')}</div>
+                    <div className="text-[11px] text-gray-400 dark:text-gray-500">
+                      {t('export.scriptMdDesc')}
+                    </div>
+                  </div>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  disabled={!canExport || isExportingScript}
+                  onSelect={exportScriptDocx}
+                  className="cursor-pointer gap-2.5"
+                >
+                  <NotebookText
+                    className="w-4 h-4 text-gray-400 dark:text-gray-500"
+                    aria-hidden="true"
+                  />
+                  <div>
+                    <div>{t('export.scriptDocx')}</div>
+                    <div className="text-[11px] text-gray-400 dark:text-gray-500">
+                      {t('export.scriptDocxDesc')}
+                    </div>
+                  </div>
+                </DropdownMenuItem>
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+            {videoExportEnabled && (
+              <DropdownMenuItem
+                disabled={!canExport}
+                onSelect={() => setVideoDialogOpen(true)}
+                className="cursor-pointer gap-2.5 border-t border-gray-200 dark:border-gray-700"
+                title={canExport ? undefined : t('export.mediaPending')}
+              >
+                <Film className="w-4 h-4 text-gray-400 shrink-0" />
+                <div>
+                  <div>{t('export.video')}</div>
+                  <div className="text-[11px] text-gray-400 dark:text-gray-500">
+                    {t('export.videoDesc')}
+                  </div>
+                </div>
+              </DropdownMenuItem>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
 
       <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
       {videoExportEnabled && (

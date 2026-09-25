@@ -65,9 +65,11 @@ const LOAD_UNAVAILABLE_ERROR = 'load-unavailable';
 export function ClassroomSurface({
   classroomId,
   variant = 'page',
+  learnerMode = false,
 }: {
   readonly classroomId: string;
   readonly variant?: 'page' | 'pane';
+  readonly learnerMode?: boolean;
 }) {
   const { loadFromStorage } = useStageStore();
   const loadedClassroomId = useStageStore((s) => s.stage?.id ?? null);
@@ -98,6 +100,7 @@ export function ClassroomSurface({
   const { mayGenerate, refreshOwnership } = useClassroomSession({
     classroomId,
     variant,
+    learnerMode,
     stopGeneration: stop,
   });
 
@@ -453,7 +456,7 @@ export function ClassroomSurface({
                 <p className="text-lg font-medium">{t('classroom.notFound')}</p>
                 <p className="text-sm text-muted-foreground">{t('classroom.notFoundDesc')}</p>
                 <Link
-                  href="/"
+                  href={learnerMode ? '/learn' : '/'}
                   className="mt-2 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
                 >
                   {t('classroom.backToHome')}
@@ -492,6 +495,7 @@ export function ClassroomSurface({
           ) : (
             <Stage
               classroomId={classroomId}
+              learnerMode={learnerMode}
               onRetryOutline={mayGenerate ? retrySingleOutline : undefined}
             />
           )}
