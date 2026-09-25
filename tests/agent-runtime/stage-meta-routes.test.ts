@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   runtimeConfigured: true,
   persistenceConfigured: true,
   resolveRequestOwnerId: vi.fn(),
+  administrator: false,
   accessRow: null as Record<string, unknown> | null,
   updatedRows: [] as unknown[],
 }));
@@ -15,6 +16,9 @@ vi.mock('@/lib/config/feature-flags', () => ({
 }));
 vi.mock('@/lib/server/agent-runtime/owner', () => ({
   resolveRequestOwnerId: mocks.resolveRequestOwnerId,
+}));
+vi.mock('@/lib/server/role-access', () => ({
+  isAdministrator: () => mocks.administrator,
 }));
 vi.mock('@/lib/persistence/server-provider', () => ({
   getServerPersistenceProvider: async () => ({
@@ -52,6 +56,7 @@ beforeEach(() => {
   mocks.runtimeConfigured = true;
   mocks.persistenceConfigured = true;
   mocks.resolveRequestOwnerId.mockReturnValue('owner-1');
+  mocks.administrator = false;
   mocks.accessRow = {
     meta_owner_id: 'owner-1',
     meta_is_public: false,

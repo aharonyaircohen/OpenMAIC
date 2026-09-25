@@ -62,9 +62,11 @@ import { exitProPlaybackToStandalone } from '@/lib/workbench/pro-playback-exit';
 export function Stage({
   classroomId,
   onRetryOutline,
+  learnerMode = false,
 }: {
   classroomId?: string;
   onRetryOutline?: (outlineId: string) => Promise<void>;
+  learnerMode?: boolean;
 }) {
   const { mode, setMode, scenes, currentSceneId, generatingOutlines, stage } = useStageStore();
   const router = useRouter();
@@ -97,7 +99,7 @@ export function Stage({
   // server-backed mode — their saves would not pass the owner check anyway.
   const isOwner = useStageStore((s) => s.isOwner);
   const readOnly = useStageStore((s) => s.readOnly);
-  const canEditOwnedStage = isOwner && !readOnly;
+  const canEditOwnedStage = !learnerMode && isOwner && !readOnly;
 
   // Hosted by the Pro workspace's classroom pane. Ambient rather than a prop
   // because `Stage` is built by `ClassroomSurface`, which is mounted by both
@@ -354,6 +356,7 @@ export function Stage({
         >
           <PlaybackChromeRoot
             ref={playbackRef}
+            learnerMode={learnerMode}
             onInteractivePickerChange={setPlaybackInteractivePicker}
             onRetryOutline={onRetryOutline}
             canEnterProMode={workbenchPlayback || isEditable}
@@ -365,7 +368,7 @@ export function Stage({
             hideHeaderBackControl={classroomBackControl === 'hidden'}
             hideHeader={!classroomHeaderControls.showHeader}
             hideHeaderGlobalControls={!classroomHeaderControls.showGlobalControls}
-            hideHeaderCourseActions={!classroomHeaderControls.showCourseActions}
+            hideHeaderCourseActions={learnerMode || !classroomHeaderControls.showCourseActions}
           />
         </motion.div>
       ) : (

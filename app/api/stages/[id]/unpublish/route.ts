@@ -11,6 +11,7 @@ import { isAgentRuntimeConfigured } from '@/lib/config/feature-flags';
 import { setStagePublished } from '@/lib/persistence/stage-meta';
 import { getStageAccessDb, resolveStageAccess } from '@/lib/server/stage-access';
 import { withRequestOwnerId } from '@/lib/server/agent-runtime/with-owner';
+import { isAdministrator } from '@/lib/server/role-access';
 
 export const runtime = 'nodejs';
 
@@ -22,7 +23,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   return withRequestOwnerId(req, async (ownerId, responseHeaders) => {
     const { id: stageId } = await params;
     try {
-      if (ownerId.startsWith('anon:')) {
+      if (ownerId.startsWith('anon:') && !(await isAdministrator())) {
         return NextResponse.json(
           { error: 'login_required' },
           { status: 401, headers: responseHeaders },

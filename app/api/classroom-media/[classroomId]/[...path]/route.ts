@@ -4,6 +4,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { CLASSROOMS_DIR, isValidClassroomId } from '@/lib/server/classroom-storage';
 import { parseRangeHeader } from '@/lib/server/http-range';
 import { createLogger } from '@/lib/logger';
+import { getApplicationRole } from '@/lib/server/role-access';
+import { resolveStageAccess } from '@/lib/server/stage-access';
 
 const log = createLogger('ClassroomMedia');
 
@@ -46,6 +48,16 @@ export async function GET(
   // Validate classroomId
   if (!isValidClassroomId(classroomId)) {
     return NextResponse.json({ error: 'Invalid classroom ID' }, { status: 400 });
+  }
+
+  // On a protected deployment, non-admin viewers may only fetch media that
+  // belongs to a published, complete course. Preserve the upstream unprotected
+  // local-storage mode when ACCESS_CODE is not configured.
+  if (process.env.ACCESS_CODE && (await getApplicationRole()) !== 'admin') {
+    const access = await resolveStageAccess(classroomId);
+    if (!access?.isPublic || !access.generationComplete) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    }
   }
 
   // Validate path segments — no traversal

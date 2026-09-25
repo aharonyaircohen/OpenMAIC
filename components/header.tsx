@@ -29,6 +29,8 @@ interface HeaderProps {
   readonly hideGlobalControls?: boolean;
   /** Hide course-level share/export in a workbench-attached classroom. */
   readonly hideCourseActions?: boolean;
+  readonly learnerMode?: boolean;
+  readonly backHref?: string;
 }
 
 export function Header({
@@ -41,6 +43,8 @@ export function Header({
   hideBackControl,
   hideGlobalControls,
   hideCourseActions,
+  learnerMode = false,
+  backHref,
 }: HeaderProps) {
   const { t } = useI18n();
   const router = useRouter();
@@ -55,7 +59,9 @@ export function Header({
             ? null
             : (backControl ?? (
                 <button
-                  onClick={() => exitClassroom(router, searchParams)}
+                  onClick={() =>
+                    backHref ? router.push(backHref) : exitClassroom(router, searchParams)
+                  }
                   className="shrink-0 p-2 rounded-lg text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
                   title={exitLabel}
                   aria-label={exitLabel}
@@ -96,6 +102,7 @@ export function Header({
           onToggleEditMode={onToggleEditMode}
           showGlobalControls={!hideGlobalControls}
           showCourseActions={!hideCourseActions}
+          learnerMode={learnerMode}
         />
       </header>
     </>
